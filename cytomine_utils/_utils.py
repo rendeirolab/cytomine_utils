@@ -1,42 +1,52 @@
 """Utility functions used throughout the project."""
 
-import typing as tp
+import typing as _tp
+from pathlib import Path as _Path
 
-from pathlib import Path
+import numpy as np
 
-from cytomine import Cytomine
+from cytomine import Cytomine as _Cytomine
 from cytomine.models import (
+    User,
     CurrentUser,
+    Project,
+    ProjectCollection,
+    Storage,
     StorageCollection,
     ImageInstance,
     ImageInstanceCollection,
+    Annotation,
     AnnotationCollection,
+    AnnotationTerm,
+    Ontology,
+    OntologyCollection,
     Term,
-    User,
+    TermCollection,
+    Property,
 )
-from cytomine.models.project import ProjectCollection, Project
-from cytomine.models.storage import Storage
 
-__all__ = [
-    "get_credentials",
-    "get_projects",
-    "get_project",
-    "get_storage",
-    "get_images_of_project",
-    "get_image_by_id",
-    "get_term_by_id",
-    "get_user_by_id",
-    "upload_tiff_to_cytomine",
-    "backup_annotations",
-    "update_image_with_attributes",
-]
+_GeoJSON = dict[str : str | _tp.Any]
 
 
-def get_credentials(keys_file: Path = None) -> dict[str, str]:
+def get_credentials(keys_file: _Path = None) -> dict[str, str]:
+    """
+    Retrieve credentials from a key file.
+
+    Parameters
+    ----------
+    key_file: Path
+        JSON file with credential information.
+        Default is file present in ~/.cytomine.auth.json
+
+    Returns
+    -------
+    dict[str, str]
+        Dictionary with credential information.
+    """
     import json
 
     if keys_file is None:
-        keys_file = Path("~/.cytomine.auth.json").expanduser()
+        keys_file = _Path("~/.cytomine.auth.json").expanduser()
 
     if not keys_file.exists():
         raise FileNotFoundError(
@@ -51,19 +61,60 @@ def get_credentials(keys_file: Path = None) -> dict[str, str]:
     return keys
 
 
+def get_current_user() -> User:
+    return CurrentUser().fetch()
+
+
+def get_user_by_id(id: int) -> User:
+    return User(id=id).fetch()
+
+
 def get_projects() -> list[Project]:
+    """
+    Retrieve all projects in Cytomine instance.
+
+    Returns
+    -------
+    list[Project]
+        List of existing projects in Cytomine instance.
+    """
     return ProjectCollection().fetch().data()
 
 
 def get_project(name: str) -> Project:
+    """
+    Retrieve a project from a Cytomine instance based on its name.
+
+    Parameters
+    ----------
+    name: str
+        Name of project to retrieve.
+
+    Returns
+    -------
+    Project
+        Project existing in Cytomine instance.
+    """
     prjs = get_projects()
     return next(filter(lambda prj: prj.name == name, prjs)).fetch()
 
 
 def get_storage() -> Storage:
+    """
+    Retrieve the user storage from a Cytomine instance.
+
+    Returns
+    -------
+    Storage
+        User storage from Cytomine instance.
+    """
     storages = StorageCollection().fetch()
-    me = CurrentUser().fetch()
+    me = get_current_user()
     return next(filter(lambda storage: storage.user == me.id, storages)).fetch()
+
+
+def get_ontologies() -> list[Ontology]:
+    return [x.fetch() for x in OntologyCollection().fetch()]
 
 
 def get_images_of_project(project_name: str, **attributes) -> list[ImageInstance]:
@@ -74,35 +125,111 @@ def get_images_of_project(project_name: str, **attributes) -> list[ImageInstance
     return img_col.data()
 
 
+def get_all_images() -> list[ImageInstance]:
+    prjs = get_projects()
+    img_col = list()
+    for prj in prjs:
+        img_col += get_images_of_project(prj.name)
+    return img_col
+
+
+def get_image_by_name(image_name: str) -> ImageInstance:
+    return next(
+        filter(lambda x: x.filename.split("/")[-1] == image_name, get_all_images())
+    )
+
+
 def get_image_by_id(id: int) -> ImageInstance:
     return ImageInstance(id=id).fetch()
+
+
+def get_term_id_mapping() -> dict[str, id]:
+    mapping = dict()
+    for ontology in get_ontologies():
+        mapping |= {x["name"]: x["id"] for x in ontology.children}
+    return mapping
+
+
+def get_term_by_name(term_name: str) -> Term:
+    return get_term_by_id(get_term_id_mapping()[term_name])
 
 
 def get_term_by_id(id: int) -> Term:
     return Term(id=id).fetch()
 
 
-def get_user_by_id(id: int) -> User:
-    return User(id=id).fetch()
-
-
-def upload_tiff_to_cytomine(
-    tiff_file: Path, project_name: str, **attributes: dict[str, str]
+def upload_image(
+    image_file: _Path, project_name: str, **attributes: dict[str, str]
 ) -> None:
 
     prj = get_project(project_name)
     storage = get_storage()
 
-    uploaded_file = client.upload_image(
-        upload_host=keys["upload_host"],
-        filename=tiff_file.as_posix(),
-        id_storage=storage.id,
-        id_project=prj.id,
-        properties=attributes,
-    )
+    try:
+        uploaded_file = client.upload_image(
+            upload_host=keys["upload_host"],
+            filename=image_file.as_posix(),
+            id_storage=storage.id,
+            id_project=prj.id,
+            properties=attributes,
+        )
+    except TypeError:
+        "'NoneType' object is not iterable"
+        pass
 
 
-def backup_annotations(project_name: str, backup_json: Path) -> None:
+def upload_annotations(
+    geojson: _GeoJSON, project_name: str, image_file: str, dimensions: tuple[int, int]
+) -> None:
+    from shapely.geometry import Polygon
+    from shapely.geometry import LineString
+
+    prj = get_project(project_name)
+    imgs = get_images_of_project(prj.name)
+    img = next(filter(lambda x: x.filename.split("/")[-1] == image_file, imgs))
+
+    assert geojson["type"] == "FeatureCollection"
+
+    for i, feature in enumerate(geojson["features"]):
+        f = feature["geometry"]
+        assert f["type"] in ["LineString", "Polygon"]
+        coords = np.asarray(f["coordinates"])
+        # Invert y axis
+        coords = np.asarray([coords[:, 0], abs(coords[:, 1] - dimensions[1])]).T
+        obj = Polygon(coords).buffer(0)
+        if not obj.is_valid:
+            print(f"Annotation number {i} is not valid!")
+            continue
+
+        annot = Annotation(location=obj.wkt, id_image=img.id, id_project=prj.id)
+        annot.users = [get_current_user().id]
+        annot.save()
+
+        if "name" in feature["properties"]:
+            term = AnnotationTerm(
+                annot.id, get_term_by_name(feature["properties"]["name"].lower()).id
+            )
+            term.save()
+
+        for k, v in feature["properties"].items():
+            prop = Property(annot, key=k, value=v)
+            prop.save()
+
+
+def get_annotations_from_image(image_name: str) -> list[Annotation]:
+    img = get_image_by_name(image_name)
+    annotations = AnnotationCollection(project=img.project, image=img.id).fetch()
+    return [a.fetch() for a in annotations]
+
+
+def get_annotations(project_name: str) -> list[Annotation]:
+    prj = get_project(project_name)
+    annotations = AnnotationCollection(project=prj.id).fetch()
+    annotations = [x.fetch() for x in annotations]
+    return annotations
+
+
+def backup_annotations(project_name: str, backup_json: _Path) -> None:
     # TODO: export as GeoJSON
     # backup_json = 'cytomine.annotations.backup.json'
     prj = get_project(project_name)
@@ -111,7 +238,7 @@ def backup_annotations(project_name: str, backup_json: Path) -> None:
     annotations_wk = dict()
     for annot in annotations:
         annot.fetch()
-        image_name = Path(get_image_by_id(annot.image).filename).name
+        image_name = _Path(get_image_by_id(annot.image).filename).name
         if image_name not in annotations_wk:
             annotations_wk[image_name] = list()
 
@@ -130,59 +257,5 @@ def backup_annotations(project_name: str, backup_json: Path) -> None:
         json.dump(annotations_wk, handle, indent=4)
 
 
-def update_image_with_attributes(
-    tiff_file: Path, project_name: str, attributes: dict[str, str]
-) -> None:
-    keys = get_credentials()
-
-    client = Cytomine(**keys, verbose="INFO")
-
-    images = get_images_of_project(project_name)
-    image = next(filter(lambda x: Path(x.filename).name == tiff_file.name, images))
-
-    # Update
-    ## Works
-    image.resolution = 0.49
-    image.magnification = 20
-    ## Does not work
-    image.populate(dict(data_type="he_wsi", project_name=project_name, **attributes))
-    image.save()
-
-    from cytomine.cytomine import Cytomine
-
-    for attr in attributes:
-        setattr(image, attr, attributes[attr])
-    i = Cytomine.get_instance()
-    i.put_model(image)
-
-    resp = client._get(f"project.json", query_parameters={})
-    resp = client._get(f"storage.json", query_parameters={})
-    resp = client._get(f"abstractimage.json", query_parameters={})
-
-    resp = client._post(f"abstractimage/{image.id}/histogram/extract.json")
-
-    resp = client._get(
-        f"imageinstance/{image.id}/sliceinstance.json", query_parameters=dict()
-    )  # dict(max=0, offset=0)
-
-    import requests
-    from requests.auth import HTTPBasicAuth
-
-    q = f"http://{keys['host']}/api/abstractimage/{image.id}/properties/populate.json"
-    r = requests.post(
-        q, data=attributes, auth=HTTPBasicAuth(keys["public_key"], keys["private_key"])
-    )
-
-    from cytomine.cytomine import CytomineAuth
-
-    auth = CytomineAuth(keys["public_key"], keys["private_key"], keys["host"], "/api/")
-    q = f"http://{keys['host']}/api/abstractimage/{image.id}.json"
-
-    r = requests.put(q, data=attributes)
-    auth(r)
-
-    resp = client._put(f"abstractimage/{image.id}.json", query_parameters=attributes)
-
-
 keys = get_credentials()
-client = Cytomine(**keys, verbose="INFO")
+client = _Cytomine(**keys, verbose="INFO")
