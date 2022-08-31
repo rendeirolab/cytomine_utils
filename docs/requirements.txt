@@ -1,0 +1,7 @@
+Sphinx
+# sphinx.ext.autodoc
+# sphinx.ext.autosummary
+# sphinx.ext.napoleon
+sphinx-autodoc-typehints
+# sphinx.ext.intersphinx
+# sphinx.ext.todo

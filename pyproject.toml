@@ -52,3 +52,6 @@ requires = ["setuptools>=45", "wheel", "setuptools_scm[toml]>=6.0"]
 [tool.setuptools_scm]
 write_to = "cytomine_utils/_version.py"
 write_to_template = 'version = __version__ = "{version}"'
+
+[tool.ruff]
+line-length = 90

@@ -21,7 +21,6 @@ from cytomine.models import (
     Ontology,
     OntologyCollection,
     Term,
-    TermCollection,
     Property,
 )
 
@@ -46,14 +45,9 @@ def get_credentials(keys_file: _Path = None) -> dict[str, str]:
 
     Parameters
     ----------
-    key_file: Path
+    keys_file
         JSON file with credential information.
-        Default is file present in ~/.cytomine.auth.json
-
-    Returns
-    -------
-    dict[str, str]
-        Dictionary with credential information.
+        Default is file present in `~/.cytomine.auth.json`.
     """
     import json
 
@@ -74,22 +68,24 @@ def get_credentials(keys_file: _Path = None) -> dict[str, str]:
 
 
 def get_current_user() -> User:
+    """Retrieve current user model."""
     return CurrentUser().fetch()
 
 
 def get_user_by_id(id: int) -> User:
+    """
+    Retrieve user based on id.
+
+    Parameters
+    ----------
+    id:
+        ID of user.
+    """
     return User(id=id).fetch()
 
 
 def get_projects() -> list[Project]:
-    """
-    Retrieve all projects in Cytomine instance.
-
-    Returns
-    -------
-    list[Project]
-        List of existing projects in Cytomine instance.
-    """
+    """Retrieve all projects in Cytomine instance."""
     return ProjectCollection().fetch().data()
 
 
@@ -99,37 +95,39 @@ def get_project(name: str) -> Project:
 
     Parameters
     ----------
-    name: str
+    name:
         Name of project to retrieve.
-
-    Returns
-    -------
-    Project
-        Project existing in Cytomine instance.
     """
     prjs = get_projects()
     return next(filter(lambda prj: prj.name == name, prjs)).fetch()
 
 
 def get_storage() -> Storage:
-    """
-    Retrieve the user storage from a Cytomine instance.
-
-    Returns
-    -------
-    Storage
-        User storage from Cytomine instance.
-    """
+    """Retrieve the user storage from a Cytomine instance."""
     storages = StorageCollection().fetch()
     me = get_current_user()
     return next(filter(lambda storage: storage.user == me.id, storages)).fetch()
 
 
 def get_ontologies() -> list[Ontology]:
+    """Retrieve ontologies across all projects."""
     return [x.fetch() for x in OntologyCollection().fetch()]
 
 
-def get_images_of_project(project_name: str, **attributes) -> list[ImageInstance]:
+def get_images_of_project(
+    project_name: str, **attributes: dict[str, _tp.Any]
+) -> list[ImageInstance]:
+    """
+    Retrieve all images associated with a project.
+
+    Parameters
+    ----------
+    project_name
+        Name of project to retrieve images for.
+    attributes
+        Additional parameters are passed to :class:`ImageInstanceCollection`
+        and can be used for additinoal filtering.
+    """
     prj = get_project(project_name)
     img_col = ImageInstanceCollection(
         filters=dict(project=prj.id, **attributes)
@@ -138,6 +136,7 @@ def get_images_of_project(project_name: str, **attributes) -> list[ImageInstance
 
 
 def get_all_images() -> list[ImageInstance]:
+    """Retrieve all images across all projects."""
     prjs = get_projects()
     img_col = list()
     for prj in prjs:
@@ -146,16 +145,36 @@ def get_all_images() -> list[ImageInstance]:
 
 
 def get_image_by_name(image_name: str) -> ImageInstance:
+    """
+    Retrieve image based on its name.
+
+    Parameters
+    ---------
+    image_name
+        Name of the image to retrieve.
+    """
     return next(
         filter(lambda x: x.filename.split("/")[-1] == image_name, get_all_images())
     )
 
 
 def get_image_by_id(id: int) -> ImageInstance:
+    """
+    Retrieve image based on its ID.
+
+    Parameters
+    ---------
+    id
+        ID of the image to retrieve.
+    """
     return ImageInstance(id=id).fetch()
 
 
 def get_term_id_mapping() -> dict[str, id]:
+    """
+    Retrieve mapping of ontology terms and their IDs.
+    Works across all ontologies.
+    """
     mapping = dict()
     for ontology in get_ontologies():
         mapping |= {x["name"]: x["id"] for x in ontology.children}
@@ -163,17 +182,44 @@ def get_term_id_mapping() -> dict[str, id]:
 
 
 def get_term_by_name(term_name: str) -> Term:
+    """
+    Retrieve ontology term based on its name.
+
+    Parameters
+    ---------
+    term_name
+        Name of the term to retrieve.
+    """
     return get_term_by_id(get_term_id_mapping()[term_name])
 
 
 def get_term_by_id(id: int) -> Term:
+    """
+    Retrieve term based on its ID.
+
+    Parameters
+    ---------
+    id
+        ID of the term to retrieve.
+    """
     return Term(id=id).fetch()
 
 
 def upload_image(
     image_file: _Path, project_name: str, **attributes: dict[str, str]
 ) -> None:
+    """
+    Upload image to Cytomine instance..
 
+    Parameters
+    ---------
+    image_file
+        Path to file to upload. Can be of several formats.
+    project_name:
+        Name of project to associate image with.
+    attributes
+        Additional attributes to add to the image.
+    """
     prj = get_project(project_name)
     storage = get_storage()
 
@@ -193,8 +239,21 @@ def upload_image(
 def upload_annotations(
     geojson: _GeoJSON, project_name: str, image_file: str, dimensions: tuple[int, int]
 ) -> None:
+    """
+    Upload annotations of an image to Cytomine.
+
+    Parameters
+    ----------
+    geojson
+        Annotations to add in GeoJSON format.
+    project_name
+        Name of project to associate annotations with (should be the project of the image)
+    image_file
+        Image to associate annotations with.
+    dimensions
+        Shape of image.
+    """
     from shapely.geometry import Polygon
-    from shapely.geometry import LineString
 
     prj = get_project(project_name)
     imgs = get_images_of_project(prj.name)
@@ -229,12 +288,28 @@ def upload_annotations(
 
 
 def get_annotations_from_image(image_name: str) -> list[Annotation]:
+    """
+    Retrieve annotations from image.
+
+    Parameters
+    ----------
+    image_name
+        Name of image to retrieve annotations from.
+    """
     img = get_image_by_name(image_name)
     annotations = AnnotationCollection(project=img.project, image=img.id).fetch()
     return [a.fetch() for a in annotations]
 
 
 def get_annotations(project_name: str) -> list[Annotation]:
+    """
+    Retrieve annotations from all images in a project.
+
+    Parameters
+    ----------
+    project_name
+        Name of project to retrieve annotations from.
+    """
     prj = get_project(project_name)
     annotations = AnnotationCollection(project=prj.id).fetch()
     annotations = [x.fetch() for x in annotations]
@@ -242,6 +317,17 @@ def get_annotations(project_name: str) -> list[Annotation]:
 
 
 def backup_annotations(project_name: str, backup_json: _Path) -> None:
+    """
+    Retrieve annotations from project and save them to file.
+    Right now it does not write in GeoJSON format.
+
+    Parameters
+    ----------
+    project_name
+        Name of project to retieve annotations from.
+    backup_json
+        Path to file to write annotations to.
+    """
     # TODO: export as GeoJSON
     # backup_json = 'cytomine.annotations.backup.json'
     prj = get_project(project_name)
