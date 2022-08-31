@@ -28,6 +28,18 @@ from cytomine.models import (
 _GeoJSON = dict[str : str | _tp.Any]
 
 
+def get_client() -> _Cytomine:
+    """Get a Cytomine client."""
+    keys = get_credentials()
+    client = _Cytomine(**keys, verbose="INFO")
+    return client
+
+
+def connect() -> None:
+    """Use a client to connect to Cytomine"""
+    get_client()
+
+
 def get_credentials(keys_file: _Path = None) -> dict[str, str]:
     """
     Retrieve credentials from a key file.
@@ -255,7 +267,3 @@ def backup_annotations(project_name: str, backup_json: _Path) -> None:
 
     with open(backup_json, "w") as handle:
         json.dump(annotations_wk, handle, indent=4)
-
-
-keys = get_credentials()
-client = _Cytomine(**keys, verbose="INFO")
