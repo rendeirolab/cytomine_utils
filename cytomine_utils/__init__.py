@@ -1,6 +1,6 @@
 """Cytomine Utils."""
 
-from ._utils import *
+from cytomine_utils._utils import *
 
 __version__ = "0.0.0"
 

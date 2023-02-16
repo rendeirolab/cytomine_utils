@@ -126,7 +126,7 @@ def get_images_of_project(
         Name of project to retrieve images for.
     attributes
         Additional parameters are passed to :class:`ImageInstanceCollection`
-        and can be used for additinoal filtering.
+        and can be used for additional filtering.
     """
     prj = get_project(project_name)
     img_col = ImageInstanceCollection(
@@ -233,7 +233,7 @@ def upload_image(
         )
     except TypeError:
         "'NoneType' object is not iterable"
-        pass
+        print("Failed to upload image...")
 
 
 def upload_annotations(

@@ -33,6 +33,8 @@ prjs = cu.get_projects()
 
 ## Documentation
 
+The documentation for the original Cytomine API is available here: https://doc.uliege.cytomine.org/
+
 The API is fully documented and can be seen in HTML by building it locally:
 
 ```bash
