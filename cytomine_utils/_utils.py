@@ -2,6 +2,9 @@
 
 import typing as _tp
 from pathlib import Path as _Path
+import time
+import io
+import logging
 
 import numpy as np
 
@@ -24,7 +27,8 @@ from cytomine.models import (
     Property,
 )
 
-_GeoJSON = dict[str : str | _tp.Any]
+_GeoJSON = dict[str, str | _tp.Any]
+client: _Cytomine
 
 
 def get_client() -> _Cytomine:
@@ -36,10 +40,11 @@ def get_client() -> _Cytomine:
 
 def connect() -> None:
     """Use a client to connect to Cytomine"""
-    get_client()
+    global client
+    client = get_client()
 
 
-def get_credentials(keys_file: _Path = None) -> dict[str, str]:
+def get_credentials(keys_file: _tp.Optional[_Path] = None) -> dict[str, str]:
     """
     Retrieve credentials from a key file.
 
@@ -65,6 +70,29 @@ def get_credentials(keys_file: _Path = None) -> dict[str, str]:
     # if "upload_host" not in keys:
     #     keys["upload_host"] = "cytomine-upload.int.cemm.at"
     return keys
+
+
+def get_logger():
+    return client.logger
+
+
+def set_logger_stream(stream: _tp.Optional[io.StringIO | logging.StreamHandler] = None):
+    import io
+
+    if stream is None:
+        stream = io.StringIO()
+    get_logger().root.handlers[0].setStream(stream)
+    return stream
+
+
+def logger_stream_has_error(stream: io.StringIO) -> bool:
+    stream.seek(0)
+    return "[ERROR]" in stream.read()
+
+
+def logger_stream_has_error_in_last_command(stream: io.StringIO) -> bool:
+    stream.seek(0)
+    return "[ERROR]" in stream.read().strip().split("\n")[-1]
 
 
 def get_current_user() -> User:
@@ -170,12 +198,12 @@ def get_image_by_id(id: int) -> ImageInstance:
     return ImageInstance(id=id).fetch()
 
 
-def get_term_id_mapping() -> dict[str, id]:
+def get_term_id_mapping() -> dict[str, int]:
     """
     Retrieve mapping of ontology terms and their IDs.
     Works across all ontologies.
     """
-    mapping = dict()
+    mapping: dict[str, int] = dict()
     for ontology in get_ontologies():
         mapping |= {x["name"]: x["id"] for x in ontology.children}
     return mapping
@@ -222,6 +250,9 @@ def upload_image(
     """
     prj = get_project(project_name)
     storage = get_storage()
+    keys = get_credentials()
+
+    stream = set_logger_stream()
 
     try:
         uploaded_file = client.upload_image(
@@ -231,9 +262,15 @@ def upload_image(
             id_project=prj.id,
             properties=attributes,
         )
-    except TypeError:
-        "'NoneType' object is not iterable"
-        print("Failed to upload image...")
+    except TypeError as e:
+        if e.args[0] != "'NoneType' object is not iterable":
+            print("Failed to upload image.")
+            raise e
+    if logger_stream_has_error_in_last_command(stream):
+        raise ValueError("Failed to upload image.")
+    time.sleep(3)
+
+    set_logger_stream(logging.StreamHandler())
 
 
 def upload_annotations(
