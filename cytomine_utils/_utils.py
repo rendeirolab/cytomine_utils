@@ -379,7 +379,7 @@ def backup_annotations(project_name: str, backup_json: _Path) -> None:
 
         # u = get_user_by_id(annot.user)
         annotations_wk[image_name].append(
-            eval(annot.to_json().replace("false", "False"))
+            eval(annot.to_json().replace("false", "False").replace("true", "True"))
             # dict(
             #     terms=[get_term_by_id(x).name for x in annot.term],
             #     location=annot.location,
@@ -390,3 +390,19 @@ def backup_annotations(project_name: str, backup_json: _Path) -> None:
 
     with open(backup_json, "w") as handle:
         json.dump(annotations_wk, handle, indent=4)
+
+
+def delete_image(image_name: str):
+    img = get_image_by_name(image_name)
+    # N.B. this should be img.delete(), but somehow does not work even though it returns 200
+    # furthermore, images are still stored in the server so they need to be manually removed from /data
+    client.delete_image_instance(img.id)
+    # This deletes from storage
+    client.delete(f"abstractimage/{img.id}.json")
+
+
+def delete_annotations(image_name: str):
+    annots = get_annotations_from_image(image_name)
+    # N.B. this should be a.delete(), but somehow does not work even though it returns 200
+    for a in annots:
+        client.delete_annotation(a.id)
