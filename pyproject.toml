@@ -40,6 +40,12 @@ dev = [
     "PyQt5",
 ]
 
+docs =[
+    "sphinx",
+    "sphinx-autodoc-typehints",
+    "furo"
+]
+
 [project.urls]
 homepage = "https://github.com/rendeirolab/cytomine_utils"
 repository = "https://github.com/rendeirolab/cytomine_utils"

@@ -393,6 +393,14 @@ def backup_annotations(project_name: str, backup_json: _Path) -> None:
 
 
 def delete_image(image_name: str):
+    """
+    Delete image from Cytomine server.
+
+    Parameters
+    ----------
+    image_name
+        Name of image to delete.
+    """
     img = get_image_by_name(image_name)
     # N.B. this should be img.delete(), but somehow does not work even though it returns 200
     # furthermore, images are still stored in the server so they need to be manually removed from /data
@@ -402,6 +410,14 @@ def delete_image(image_name: str):
 
 
 def delete_annotations(image_name: str):
+    """
+    Delete all annotations of an image from Cytomine server.
+
+    Parameters
+    ----------
+    image_name
+        Name of image to delete annotations from.
+    """
     annots = get_annotations_from_image(image_name)
     # N.B. this should be a.delete(), but somehow does not work even though it returns 200
     for a in annots:

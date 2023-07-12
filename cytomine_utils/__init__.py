@@ -1,8 +1,7 @@
 """Cytomine Utils."""
 
-from cytomine_utils._utils import *
-
-__version__ = "0.0.0"
+from ._utils import *
+from ._version import __version__
 
 
 async def _connect(timeout: int = 3):
