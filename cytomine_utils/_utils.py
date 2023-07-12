@@ -5,6 +5,7 @@ from pathlib import Path as _Path
 import time
 import io
 import logging
+import json
 
 import numpy as np
 
@@ -31,17 +32,18 @@ _GeoJSON = dict[str, str | _tp.Any]
 client: _Cytomine
 
 
-def get_client() -> _Cytomine:
+def get_client(verbosity: str = "ERROR") -> _Cytomine:
     """Get a Cytomine client."""
     keys = get_credentials()
-    client = _Cytomine(**keys, verbose="INFO")
+    client = _Cytomine(**keys, verbose=verbosity)
     return client
 
 
-def connect() -> None:
+def connect() -> bool:
     """Use a client to connect to Cytomine"""
     global client
     client = get_client()
+    return True
 
 
 def get_credentials(keys_file: _tp.Optional[_Path] = None) -> dict[str, str]:
@@ -54,8 +56,6 @@ def get_credentials(keys_file: _tp.Optional[_Path] = None) -> dict[str, str]:
         JSON file with credential information.
         Default is file present in `~/.cytomine.auth.json`.
     """
-    import json
-
     if keys_file is None:
         keys_file = _Path("~/.cytomine.auth.json").expanduser()
 
