@@ -19,8 +19,7 @@ classifiers = [
 requires-python = ">=3.10"
 dependencies = [
     "setuptools_scm",
-    # "cytomine-python-client @ git+https://github.com/Cytomine-ULiege/Cytomine-python-client.git"  # does not work because version used is not PEP440 compliant
-    # "cytomine-python-client"
+    "cytomine-python-client>=2.4.0"
 ]
 dynamic = ['version']
 

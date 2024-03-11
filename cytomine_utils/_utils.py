@@ -392,21 +392,24 @@ def backup_annotations(project_name: str, backup_json: _Path) -> None:
         json.dump(annotations_wk, handle, indent=4)
 
 
-def delete_image(image_name: str):
+def delete_image(image_name: str | int):
     """
     Delete image from Cytomine server.
 
     Parameters
     ----------
     image_name
-        Name of image to delete.
+        Name or ID of image to delete.
     """
-    img = get_image_by_name(image_name)
+    if isinstance(image_name, str):
+        img_id = get_image_by_name(image_name).id
+    else:
+        img_id = image_name
     # N.B. this should be img.delete(), but somehow does not work even though it returns 200
     # furthermore, images are still stored in the server so they need to be manually removed from /data
-    client.delete_image_instance(img.id)
+    client.delete_image_instance(img_id)
     # This deletes from storage
-    client.delete(f"abstractimage/{img.id}.json")
+    client.delete(f"abstractimage/{img_id}.json")
 
 
 def delete_annotations(image_name: str):

@@ -7,13 +7,9 @@ A package with utilities to interact with Cytomine's API.
 You can install _Cytomine Utils_ via [pip]:
 
 ```bash
-$ pip install \
-        --index-url https://packagecloud.io/cytomine-uliege/Cytomine-python-client/pypi/simple \
-        cytomine-python-client
 $ pip install git+ssh://git@github.com/rendeirolab/cytomine_utils.git
 ```
-Dependency must be installed separately due to private package index not having setuptools>=45.
-The use of the extra index is required to install the dependencies of the Cytomine python client.
+The only dependency is `cytomine-python-client>=2.4.0` which will be installed automatically.
 
 ## Usage
 
@@ -48,5 +44,6 @@ $ browser docs/build/html/index.html
 ```
 It requires the installation of dependencies like sphinx and its extensions:
 ```bash
+pip install .[docs]  # OR
 pip install -r docs/requirements.txt
 ```
