@@ -273,6 +273,33 @@ def upload_image(
     set_logger_stream(logging.StreamHandler())
 
 
+def annotation_to_geojson(annotation: Annotation) -> _GeoJSON:
+    from shapely import wkt
+
+    if not annotation.location.startswith("POLYGON"):
+        print("Only polygons are supported.")
+        return {}
+    xy = wkt.loads(annotation.location).boundary.xy
+    coords = [[np.asarray(xy).astype(int).T.tolist()]]
+
+    geojson = dict(
+        type="Feature",
+        geometry=dict(type="MultiPolygon", coordinates=coords),
+        properties=dict(objectType="annotation"),
+    )
+    if annotation.term:
+        geojson["properties"]["name"] = get_term_by_id(annotation.term[0]).name
+    return geojson
+
+
+def annotations_to_geojson(annotations: list[_GeoJSON]) -> _GeoJSON:
+    geojson = dict(
+        type="FeatureCollection",
+        features=[annotation_to_geojson(x) for x in annotations if x != {}],
+    )
+    return geojson
+
+
 def upload_annotations(
     geojson: _GeoJSON, project_name: str, image_file: str, dimensions: tuple[int, int]
 ) -> None:
