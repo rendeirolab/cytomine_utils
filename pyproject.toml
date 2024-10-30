@@ -39,10 +39,10 @@ dev = [
     "PyQt5",
 ]
 
-docs =[
+doc =[
     "sphinx",
     "sphinx-autodoc-typehints",
-    "furo"
+    "pydata-sphinx-theme"
 ]
 
 [project.urls]
