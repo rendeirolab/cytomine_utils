@@ -1,5 +1,8 @@
 # Cytomine Utils
 
+[![Documentation Status](https://readthedocs.org/projects/cytomine-utils/badge/?version=latest&style=flat-square)](https://cytomine-utils.readthedocs.io/en/latest)
+
+
 A package with utilities to interact with Cytomine's API.
 
 ## Installation
@@ -36,14 +39,18 @@ prjs = cu.get_projects()
 
 The documentation for the original Cytomine API is available here: https://doc.uliege.cytomine.org/
 
-The API is fully documented and can be seen in HTML by building it locally:
+The API is fully documented and can be seen here: https://cytomine-utils.readthedocs.io/en/latest/
+
+
+You can also build it locally:
 
 ```bash
 $ make docs
 $ browser docs/build/html/index.html
 ```
+
 It requires the installation of dependencies like sphinx and its extensions:
 ```bash
-pip install .[docs]  # OR
+pip install .[doc]  # OR
 pip install -r docs/requirements.txt
 ```
