@@ -19,6 +19,6 @@ extensions = [
 ]
 autosummary_generate = True  # Turn on sphinx.ext.autosummary
 autodoc_typehints = "description"
-html_theme = "furo"
+html_theme = "pydata_sphinx_theme"
 templates_path = ["_templates"]
 intersphinx_mapping = {"python": ("https://docs.python.org/3", None)}

@@ -5,3 +5,4 @@ Sphinx
 sphinx-autodoc-typehints
 # sphinx.ext.intersphinx
 # sphinx.ext.todo
+pydata-sphinx-theme

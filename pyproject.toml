@@ -42,7 +42,7 @@ dev = [
 docs =[
     "sphinx",
     "sphinx-autodoc-typehints",
-    "furo"
+    "pydata-sphinx-theme"
 ]
 
 [project.urls]
